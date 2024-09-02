@@ -34,8 +34,10 @@ func main() {
 
 	handler := natssse.NewSubHandler(nc, authFunc)
 	pubHandler := natssse.NewPubHandler(nc, authFunc)
+	reqHandler := natssse.NewReqHandler(nc, authFunc)
 
 	r.Handle("GET /subscribe", handler)
 	r.Handle("POST /publish", pubHandler)
+	r.Handle("POST /request", reqHandler)
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
