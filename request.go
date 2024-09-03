@@ -3,6 +3,7 @@ package natssse
 import (
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -46,6 +47,18 @@ func newReqHandler(w http.ResponseWriter, r *http.Request, nc NatsContext) {
 	}
 	if err != nil {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), 500)
+		return
+	}
+
+	status := resp.Header.Get("Nats-Service-Error-Code")
+
+	if status != "" && status != "200" {
+		code, err := strconv.Atoi(status)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), 500)
+			return
+		}
+		http.Error(w, string(resp.Data), code)
 		return
 	}
 
