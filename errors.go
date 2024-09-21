@@ -19,7 +19,7 @@ func (c ClientError) Error() string {
 }
 
 func (c ClientError) Body() []byte {
-	return []byte(fmt.Sprintf(`{"error": %q}`, c.Details))
+	return []byte(fmt.Sprintf(`%q`, c.Details))
 }
 
 func (c ClientError) Code() int {
