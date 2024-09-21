@@ -51,7 +51,7 @@ func newKVHandler(w http.ResponseWriter, r *http.Request, nc NatsContext) error 
 
 	ok := nc.Auth(r.Header.Get("Authorization"), key)
 	if !ok {
-		return NewClientError(fmt.Errorf("unauthorized"), http.StatusUnauthorized)
+		return NewClientError(fmt.Errorf(http.StatusText(http.StatusUnauthorized)), http.StatusUnauthorized)
 	}
 
 	js, err := nc.Conn.JetStream()
@@ -61,7 +61,7 @@ func newKVHandler(w http.ResponseWriter, r *http.Request, nc NatsContext) error 
 
 	kv, err := js.KeyValue(bucket)
 	if err != nil && errors.Is(err, nats.ErrKeyNotFound) {
-		return NewClientError(fmt.Errorf("not found"), http.StatusNotFound)
+		return NewClientError(fmt.Errorf(http.StatusText(http.StatusNotFound)), http.StatusNotFound)
 	}
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func newKVHandler(w http.ResponseWriter, r *http.Request, nc NatsContext) error 
 func getKV(key string, kv nats.KeyValue) ([]byte, error) {
 	resp, err := kv.Get(key)
 	if err != nil && errors.Is(err, nats.ErrKeyNotFound) {
-		return nil, NewClientError(fmt.Errorf("not found"), http.StatusNotFound)
+		return nil, NewClientError(fmt.Errorf(http.StatusText(http.StatusNotFound)), http.StatusNotFound)
 	}
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func getKV(key string, kv nats.KeyValue) ([]byte, error) {
 func putKV(key string, kv nats.KeyValue, data []byte) error {
 	_, err := kv.Put(key, data)
 	if err != nil && errors.Is(err, nats.ErrKeyNotFound) {
-		return NewClientError(fmt.Errorf("not found"), http.StatusNotFound)
+		return NewClientError(fmt.Errorf(http.StatusText(http.StatusNotFound)), http.StatusNotFound)
 	}
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func putKV(key string, kv nats.KeyValue, data []byte) error {
 func deleteKV(key string, kv nats.KeyValue) error {
 	err := kv.Delete(key)
 	if err != nil && errors.Is(err, nats.ErrKeyNotFound) {
-		return NewClientError(fmt.Errorf("not found"), http.StatusNotFound)
+		return NewClientError(fmt.Errorf(http.StatusText(http.StatusNotFound)), http.StatusNotFound)
 	}
 	if err != nil {
 		return err
