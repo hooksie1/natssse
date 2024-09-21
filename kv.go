@@ -45,6 +45,7 @@ func NewKVHandler(conn *nats.Conn, authFunc AuthFunc) http.HandlerFunc {
 func newKVHandler(w http.ResponseWriter, r *http.Request, nc NatsContext) error {
 	bucket := r.URL.Query().Get("bucket")
 	key := r.URL.Query().Get("key")
+	domain := r.URL.Query().Get("domain")
 	if key == "" || bucket == "" {
 		return NewClientError(fmt.Errorf("key and bucket must be defined"), http.StatusBadRequest)
 	}
@@ -54,12 +55,15 @@ func newKVHandler(w http.ResponseWriter, r *http.Request, nc NatsContext) error 
 		return NewClientError(fmt.Errorf(http.StatusText(http.StatusUnauthorized)), http.StatusUnauthorized)
 	}
 
-	js, err := nc.Conn.JetStream()
+	js, err := nc.Conn.JetStream(nats.Domain(domain))
 	if err != nil {
 		return err
 	}
 
 	kv, err := js.KeyValue(bucket)
+	if err != nil && errors.Is(err, nats.ErrBucketNotFound) {
+		return NewClientError(fmt.Errorf("bucket not found"), http.StatusNotFound)
+	}
 	if err != nil && errors.Is(err, nats.ErrKeyNotFound) {
 		return NewClientError(fmt.Errorf(http.StatusText(http.StatusNotFound)), http.StatusNotFound)
 	}
