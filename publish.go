@@ -21,7 +21,7 @@ func NewPubHandler(conn *nats.Conn, authFunc AuthFunc) http.HandlerFunc {
 
 // newPubHandler is a handler that will publish on a subject passed as a query parameter
 func newPubHandler(w http.ResponseWriter, r *http.Request, nc NatsContext) {
-	subject := r.URL.Query().Get("subject")
+	subject := replacer(r, "subject")
 
 	ok := nc.Auth(r.Header.Get("Authorization"), subject)
 	if !ok {

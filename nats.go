@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -28,6 +29,12 @@ type sseFunc func(context.Context, http.Flusher, options)
 // AuthFunc does external authentication for the HTTP connections
 type AuthFunc func(authorization string, subject string) bool
 
+// replacer replaces the slash in a URL with a period to convert it to a NATS subject
+func replacer(r *http.Request, name string) string {
+	trimmed := r.PathValue(name)
+	return strings.ReplaceAll(trimmed, "/", ".")
+}
+
 // newSSEHandler is a wrapper around an sseFunc. It handles creating the goroutines around the keepalive and context cancellations
 func newSSEHandler(w http.ResponseWriter, r *http.Request, nc NatsContext, f sseFunc) {
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -36,7 +43,7 @@ func newSSEHandler(w http.ResponseWriter, r *http.Request, nc NatsContext, f sse
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	subject := r.URL.Query().Get("subject")
+	subject := replacer(r, "subject")
 
 	ok := nc.Auth(r.Header.Get("Authorization"), subject)
 	if !ok {

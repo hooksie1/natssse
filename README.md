@@ -31,7 +31,9 @@ This could be a call out to an external service to verify a JWT or as simple as 
 
 ## Handlers
 
-It's simple to add handlers to a server. Here's all you need:
+It's simple to add handlers to a server. For pub/sub or requests the only requirement is a `subject` wildcard variable. For KV, you need a variable for `bucket` and a wildcard variable for `key`. KV also supports passing the JetStream domain as a query parameter named `domain`. 
+
+Here's a very simple example: 
 
 ```
 r := http.NewServeMux()
@@ -44,11 +46,12 @@ if err != nil {
 handler := natssse.NewSubHandler(nc, authFunc)
 pubHandler := natssse.NewPubHandler(nc, authFunc)
 reqHandler := natssse.NewReqHandler(nc, authFunc)
-kvPutHandler := natssse.NewKVHandler(nc, authFunc)
+kvHandler := natssse.NewKVHandler(nc, authFunc)
 
-r.Handle("GET /subscribe", handler)
-r.Handle("POST /publish", pubHandler)
-r.Handle("POST /request", reqHandler)
-r.Handle("POST /request", kvPutHandler)
+r.Handle("GET /subscribe/{subject...}", handler)
+r.Handle("POST /publish/{subject...}", pubHandler)
+r.Handle("POST /request/{subject...}", reqHandler)
+r.Handle("POST /kv/{bucket}/{key...}", kvHandler)
+r.Handle("GET /kv/{bucket}/{key...}", kvHandler)
 log.Fatal(http.ListenAndServe(":8080", r))
 ```
