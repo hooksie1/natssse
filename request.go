@@ -21,7 +21,7 @@ func NewReqHandler(conn *nats.Conn, authFunc AuthFunc) http.HandlerFunc {
 }
 
 func newReqHandler(w http.ResponseWriter, r *http.Request, nc NatsContext) {
-	subject := r.URL.Query().Get("subject")
+	subject := replacer(r, "subject")
 
 	ok := nc.Auth(r.Header.Get("Authorization"), subject)
 	if !ok {
