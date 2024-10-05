@@ -2,7 +2,7 @@ package natssse
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -21,7 +21,12 @@ type options struct {
 	cancel  context.CancelFunc
 	subject string
 	nc      NatsContext
-	ch      chan string
+	ch      chan nats.Msg
+}
+
+type Response struct {
+	Subject string `json:"subject"`
+	Data    []byte `json:"data"`
 }
 
 type sseFunc func(context.Context, http.Flusher, options)
@@ -57,7 +62,7 @@ func newSSEHandler(w http.ResponseWriter, r *http.Request, nc NatsContext, f sse
 		return
 	}
 
-	ch := make(chan string)
+	ch := make(chan nats.Msg)
 
 	go func() {
 		<-r.Context().Done()
@@ -78,14 +83,46 @@ func newSSEHandler(w http.ResponseWriter, r *http.Request, nc NatsContext, f sse
 }
 
 // ping handles sending server side keep alive events
-func ping(ctx context.Context, ch chan<- string) {
+func ping(ctx context.Context, ch chan<- nats.Msg) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			time.Sleep(30 * time.Second)
-			ch <- fmt.Sprint(`{"system": "ping"}`)
+			msg := nats.Msg{
+				Subject: "natssse.system",
+				Data:    []byte(`{"system": "ping"}`),
+			}
+			ch <- msg
 		}
 	}
+}
+
+func writeAndFlushResponse(w http.ResponseWriter, flusher http.Flusher, msg nats.Msg) {
+
+	if err := writeResponse(w, msg); err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), 500)
+		return
+	}
+
+	flusher.Flush()
+}
+
+func writeResponse(w http.ResponseWriter, msg nats.Msg) error {
+	for k, v := range msg.Header {
+		if strings.ToLower(k) == "content-length" {
+			continue
+		}
+		for _, h := range v {
+			w.Header().Add(k, h)
+		}
+	}
+
+	resp := Response{
+		Subject: msg.Subject,
+		Data:    msg.Data,
+	}
+
+	return json.NewEncoder(w).Encode(resp)
 }

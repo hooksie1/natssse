@@ -33,6 +33,7 @@ func newReqHandler(w http.ResponseWriter, r *http.Request, nc NatsContext) {
 	if err != nil {
 		return
 	}
+	defer r.Body.Close()
 
 	msg := &nats.Msg{
 		Subject: subject,

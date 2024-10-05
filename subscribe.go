@@ -3,7 +3,6 @@ package natssse
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -31,14 +30,7 @@ func Subscribe(ctx context.Context, flusher http.Flusher, opts options) {
 		case <-ctx.Done():
 			return
 		default:
-			data := fmt.Sprintf("%s\n", <-opts.ch)
-			_, err := fmt.Fprintf(opts.writer, data)
-			if err != nil {
-				http.Error(opts.writer, err.Error(), 500)
-				return
-			}
-
-			flusher.Flush()
+			writeAndFlushResponse(opts.writer, flusher, <-opts.ch)
 		}
 	}
 }
@@ -47,7 +39,11 @@ func Subscribe(ctx context.Context, flusher http.Flusher, opts options) {
 func handleSubscription(ctx context.Context, opts options) {
 	sub, err := opts.nc.Conn.SubscribeSync(opts.subject)
 	if err != nil {
-		opts.ch <- err.Error()
+		msg := nats.Msg{
+			Subject: "natssse.system",
+			Data:    []byte(err.Error()),
+		}
+		opts.ch <- msg
 		opts.cancel()
 		return
 	}
@@ -62,10 +58,14 @@ func handleSubscription(ctx context.Context, opts options) {
 				continue
 			}
 			if err != nil {
-				opts.ch <- err.Error()
+				msg := nats.Msg{
+					Subject: "natssse.system",
+					Data:    []byte(err.Error()),
+				}
+				opts.ch <- msg
 				continue
 			}
-			opts.ch <- string(msg.Data)
+			opts.ch <- *msg
 
 		}
 	}
